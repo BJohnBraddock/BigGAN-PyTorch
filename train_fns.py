@@ -3,6 +3,7 @@ Functions for the main loop of training different conditional image models
 '''
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 import os
 
@@ -14,6 +15,36 @@ import losses
 def dummy_training_function():
   def train(x, y):
     return {}
+  return train
+
+
+def VCA_generator_training_function(G, VCA, z_, y_, config):
+
+
+  def train(x, y):
+    G.optim.zero_grad()
+
+    for accumulation_index in range(config['num_G_accumulations']):
+      z_.sample_()
+      y_.sample_()
+
+      G_z = G(z_[:config['batch_size']], G.shared(y_[:config['batch_size']]))
+
+      
+        # Resize image
+      G_z = F.interpolate(G_z, size=224)
+
+      VCA_G_z = VCA(G_z).view(-1)
+      #TODO: Should this loss be reversed?....
+
+      G_loss = losses.loss_gen_vca(VCA_G_z, 1) / float(config['num_G_accumulations'])
+      G_loss.backward()
+
+    G.optim.step()
+
+    out = {'G_loss': float(G_loss.item())}
+
+    return out
   return train
 
 
