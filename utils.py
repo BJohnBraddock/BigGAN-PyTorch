@@ -344,6 +344,10 @@ def prepare_parser():
     help='Relative filepath to trained VCA model .pth (default: %(default)s)'
   )
   parser.add_argument(
+    '--load_weights_root', type=str, default='',
+    help='Relative filepath to trained BigGAN model folder wth .pth files (default: %(default)s'
+  )
+  parser.add_argument(
     '--iters_per_epoch', type=int, default=100,
     help='Batch iterations per epoch used in VCA Generator Training (default: %(default)s)'
   )
@@ -614,7 +618,7 @@ def prepare_root(config):
   for key in ['weights_root', 'logs_root', 'samples_root']:
     if not os.path.exists(config[key]):
       print('Making directory %s for %s...' % (config[key], key))
-      os.mkdir(config[key])
+      os.makedirs(config[key])
 
 
 # Simple wrapper that applies EMA to a model. COuld be better done in 1.0 using
@@ -695,9 +699,9 @@ def join_strings(base_string, strings):
 # Save a model's weights, optimizer, and the state_dict
 def save_weights(G, D, state_dict, weights_root, experiment_name, 
                  name_suffix=None, G_ema=None):
-  root = '/'.join([weights_root, experiment_name])
+  root = '/'.join([weights_root, experiment_name, str(state_dict['epoch']), str(state_dict['itr'])])
   if not os.path.exists(root):
-    os.mkdir(root)
+    os.makedirs(root)
   if name_suffix:
     print('Saving weights to %s/%s...' % (root, name_suffix))
   else:
@@ -722,7 +726,7 @@ def save_weights(G, D, state_dict, weights_root, experiment_name,
 # Load a model's weights, optimizer, and the state_dict
 def load_weights(G, D, state_dict, weights_root, experiment_name, 
                  name_suffix=None, G_ema=None, strict=True, load_optim=True):
-  root = '/'.join([weights_root, experiment_name])
+  root = weights_root
   if name_suffix:
     print('Loading %s weights from %s...' % (name_suffix, root))
   else:
@@ -889,9 +893,9 @@ def sample_sheet(G, classes_per_sheet, num_classes, samples_per_class, parallel,
                  samples_root, experiment_name, folder_number, z_=None):
   # Prepare sample directory
   if not os.path.isdir('%s/%s' % (samples_root, experiment_name)):
-    os.mkdir('%s/%s' % (samples_root, experiment_name))
+    os.makedirs('%s/%s' % (samples_root, experiment_name))
   if not os.path.isdir('%s/%s/%d' % (samples_root, experiment_name, folder_number)):
-    os.mkdir('%s/%s/%d' % (samples_root, experiment_name, folder_number))
+    os.makedirs('%s/%s/%d' % (samples_root, experiment_name, folder_number))
   # loop over total number of sheets
   for i in range(num_classes // classes_per_sheet):
     ims = []

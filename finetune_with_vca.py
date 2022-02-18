@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import tqdm
 
 import utils
 import train_fns
@@ -67,7 +68,7 @@ def run(config):
 
     print(G)
     print(D)
-    print('Number of params in G: {} D: {} VCA: {}'.format(*[sum([p.data.nelement() for p in net.parameters()]) for net in [G,D, VCA]]))
+    print('Number of params in G: {} D: {}'.format(*[sum([p.data.nelement() for p in net.parameters()]) for net in [G,D]]))
 
 
     # Prepare state dict, which holds things like epoch # and itr #
@@ -85,7 +86,7 @@ def run(config):
     if config['resume']:
         print('Loading weights')
         utils.load_weights(G, D, state_dict,
-                            config['weights_root'], experiment_name,
+                            config['load_weights_root'], experiment_name,
                             config['load_weights'] if config['load_weights'] else None,
                             G_ema if config['ema'] else None)
     
@@ -135,7 +136,28 @@ def run(config):
         if config['ema']:
             G_ema.eval()
 
-    # train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, state_dict, config, experiment_name)
+
+    train = train_fns.VCA_generator_training_function(G, VCA, z_, y_, config)
+
+    # TODO: Training loop
+    for epoch in range(state_dict['epoch'], config['num_epochs']):
+
+        for i in range(config['iters_per_epoch']):
+            state_dict['itr'] += 1
+
+            G.train()
+
+            metrics = train()
+
+        
+        print(metrics)
+        train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, 
+                            state_dict, config, experiment_name)
+            
+        
+        state_dict['epoch'] += 1
+
+    train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, state_dict, config, experiment_name)
             
 
 def main():

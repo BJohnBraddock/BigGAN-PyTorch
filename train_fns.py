@@ -21,7 +21,7 @@ def dummy_training_function():
 def VCA_generator_training_function(G, VCA, z_, y_, config):
 
 
-  def train(x, y):
+  def train():
     G.optim.zero_grad()
 
     for accumulation_index in range(config['num_G_accumulations']):
@@ -37,7 +37,7 @@ def VCA_generator_training_function(G, VCA, z_, y_, config):
       VCA_G_z = VCA(G_z).view(-1)
       #TODO: Should this loss be reversed?....
 
-      G_loss = losses.loss_gen_vca(VCA_G_z, 1) / float(config['num_G_accumulations'])
+      G_loss = losses.generator_vca_loss(VCA_G_z, 1) / float(config['num_G_accumulations'])
       G_loss.backward()
 
     G.optim.step()
@@ -155,7 +155,7 @@ def save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y,
     else:
       fixed_Gz = which_G(fixed_z, which_G.shared(fixed_y))
   if not os.path.isdir('%s/%s' % (config['samples_root'], experiment_name)):
-    os.mkdir('%s/%s' % (config['samples_root'], experiment_name))
+    os.makedirs('%s/%s' % (config['samples_root'], experiment_name))
   image_filename = '%s/%s/fixed_samples%d.jpg' % (config['samples_root'], 
                                                   experiment_name,
                                                   state_dict['itr'])
