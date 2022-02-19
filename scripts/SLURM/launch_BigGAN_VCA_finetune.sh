@@ -34,13 +34,12 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_with_vca.py \
 --hier --dim_z 120 --shared_dim 128 \
 --G_eval_mode \
 --G_ch 96 --D_ch 96 \
---ema --use_ema --ema_start 20000 \
 --use_multiepoch_sampler \
 --resume --load_weights_root "models/BigGAN/138k" \
 --weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/savedmodels/BigGAN"  \
 --samples_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/samples" \
 --vca_filepath "pretrained/VCA/model1_test_epoch50.pth" \
---num_epochs 10 --iters_per_epoch 4000 --num_G_accumulations 8 \
+--num_epochs 4 --iters_per_epoch 4000 --num_G_accumulations 8 \
 --test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 1 --seed 0
 
 date

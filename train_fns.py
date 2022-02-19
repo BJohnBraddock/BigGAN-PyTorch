@@ -24,27 +24,26 @@ def VCA_generator_training_function(G, VCA, z_, y_, config):
   def train():
     G.optim.zero_grad()
 
-    for accumulation_index in range(config['num_G_accumulations']):
-      z_.sample_()
-      y_.sample_()
+    z_.sample_()
+    y_.sample_()
 
-      G_z = G(z_[:config['batch_size']], G.shared(y_[:config['batch_size']]))
+    G_z = G(z_[:config['batch_size']], G.shared(y_[:config['batch_size']]))
 
-      
-        # Resize image
-      G_z = F.interpolate(G_z, size=224)
+    
+    # Resize image
+    G_z = F.interpolate(G_z, size=224)
 
-      VCA_G_z = VCA(G_z).view(-1)
-      #TODO: Should this loss be reversed?....
+    VCA_G_z = VCA(G_z).view(-1)
+    #TODO: Should this loss be reversed?....
 
-      G_loss = losses.generator_vca_loss(VCA_G_z, 1) / float(config['num_G_accumulations'])
-      G_loss.backward()
+    G_loss = losses.generator_vca_loss(VCA_G_z, 1)
+    G_loss.backward()
 
     G.optim.step()
 
-    out = {'G_loss': float(G_loss.item())}
-
+    out = {'G_loss': float(G_loss.item()), 'VCA_G_z': torch.mean(VCA_G_z).item()}
     return out
+
   return train
 
 

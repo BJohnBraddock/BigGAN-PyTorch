@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import tqdm
 
 import utils
 import train_fns
@@ -39,36 +38,22 @@ def run(config):
 
     # Build the model
     G = model.Generator(**config).to(device)
-    D = model.Discriminator(**config).to(device)
-
+    D = None
+    G_ema, ema = None, None
+    
     VCA = Amy_IntermediateRoad( lowfea_VGGlayer=10, highfea_VGGlayer=36, is_highroad_only=False, is_gist=False)
     VCA = load_checkpoint(VCA, config['vca_filepath'])
     VCA = VCA.to(device)
 
-    # If using EMA, prepare it
-    if config['ema']:
-        print('Preparing EMA for G with decay of {}'.format(config['ema_decay']))
-        G_ema = model.Generator(**{**config, 'skip_init':True, 'no_optim': True}).to(device)
-        ema = utils.ema(G, G_ema, config['ema_decay'], config['ema_start'])
-    else:
-        G_ema, ema = None, None
-
     
+
     if config['G_fp16']:
         print('Casting G to float16')
         G = G.half()
-        if config['ema']:
-            G_ema = G_ema.half()
-    if config['D_fp16']:
-        D = D.half()
-    
-    GD = model.G_D(G, D)
-
-
+           
 
     print(G)
-    print(D)
-    print('Number of params in G: {} D: {}'.format(*[sum([p.data.nelement() for p in net.parameters()]) for net in [G,D]]))
+    print('Number of params in G: {} '.format(sum([p.data.nelement() for p in G.parameters()])))
 
 
     # Prepare state dict, which holds things like epoch # and itr #
@@ -91,37 +76,25 @@ def run(config):
                             G_ema if config['ema'] else None)
     
 
-    if config['parallel']:
-        GD = nn.DataParallel(GD)
-        if config['cross_replica']:
-            patch_replication_callback(GD)
+    
 
     
 
     # Prepare loggers for stats; metrics holds test metrics,
     # lmetrics holds any desired training metrics.
-    test_metrics_fname = '%s/%s_log.jsonl' % (config['logs_root'],
-                                            experiment_name)
-    train_metrics_fname = '%s/%s' % (config['logs_root'], experiment_name)
-    print('Inception Metrics will be saved to {}'.format(test_metrics_fname))
-    test_log = utils.MetricsLogger(test_metrics_fname, 
-                                    reinitialize=(not config['resume']))
-    print('Training Metrics will be saved to {}'.format(train_metrics_fname))
-    train_log = utils.MyLogger(train_metrics_fname, 
-                                reinitialize=(not config['resume']),
-                                logstyle=config['logstyle'])
-    # Write metadata
-    utils.write_metadata(config['logs_root'], experiment_name, config, state_dict)
-    # Prepare data; the Discriminator's batch size is all that needs to be passed
-    # to the dataloader, as G doesn't require dataloading.
-    # Note that at every loader iteration we pass in enough data to complete
-    # a full D iteration (regardless of number of D steps and accumulations)
-
-    # Prepare data; the Discriminator's batch size is all that needs to be passed
-    # to the dataloader, as G doesn't require dataloading.
-    # Note that at every loader iteration we pass in enough data to complete
-    # a full D iteration (regardless of number of D steps and accumulations)
-    D_batch_size = (config['batch_size'] * config['num_D_steps'] * config['num_D_accumulations'])
+    # test_metrics_fname = '%s/%s_log.jsonl' % (config['logs_root'],
+    #                                         experiment_name)
+    # train_metrics_fname = '%s/%s' % (config['logs_root'], experiment_name)
+    # print('Inception Metrics will be saved to {}'.format(test_metrics_fname))
+    # test_log = utils.MetricsLogger(test_metrics_fname, 
+    #                                 reinitialize=(not config['resume']))
+    # print('Training Metrics will be saved to {}'.format(train_metrics_fname))
+    # train_log = utils.MyLogger(train_metrics_fname, 
+    #                             reinitialize=(not config['resume']),
+    #                             logstyle=config['logstyle'])
+    # # Write metadata
+    # utils.write_metadata(config['logs_root'], experiment_name, config, state_dict)
+    
 
 
     G_batch_size = max(config['G_batch_size'], config['batch_size'])
@@ -131,26 +104,29 @@ def run(config):
     fixed_z.sample_()
     fixed_y.sample_()
 
-    if config['G_eval_mode']:
-        G.eval()
-        if config['ema']:
-            G_ema.eval()
-
 
     train = train_fns.VCA_generator_training_function(G, VCA, z_, y_, config)
 
+    print(state_dict)
+
     # TODO: Training loop
     for epoch in range(state_dict['epoch'], config['num_epochs']):
+        print(f"Epoch: {epoch}")
 
         for i in range(config['iters_per_epoch']):
             state_dict['itr'] += 1
 
             G.train()
-
             metrics = train()
 
+            if not(state_dict['itr'] % config['log_every']):
+                print('Epoch: {}    Itr: {}    G_loss: {}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
+
         
-        print(metrics)
+        if config['G_eval_mode']:
+            G.eval()
+        print("Saving")
+        print('Epoch: {}    Itr: {}    G_loss: {:e.4}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
         train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, 
                             state_dict, config, experiment_name)
             
