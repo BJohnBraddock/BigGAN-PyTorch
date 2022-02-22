@@ -1030,6 +1030,7 @@ def name_from_config(config):
   'hier' if config['hier'] else None,
   'ema' if config['ema'] else None,
   config['name_suffix'] if config['name_suffix'] else None,
+  datetime.datetime.now().strftime("%b-%d-%y-%H-%M"),
   ]
   if item is not None])
   # dogball

@@ -1,1 +1,6 @@
-
+Constants.py
+**/logs/SLURM
+*.log
+samples
+savedmodels
+pretrained

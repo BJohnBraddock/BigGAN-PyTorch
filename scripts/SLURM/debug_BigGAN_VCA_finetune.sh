@@ -7,11 +7,13 @@
 #SBATCH --partition=gpu
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=2
-#SBATCH --mem=5gb
+#SBATCH --mem=4gb
 
+#SBATCH  --account=ruogu.fang
+#SBATCH  --qos=ruogu.fang
 
-#SBATCH --time=10:00:00
-#SBATCH --output=BigGAN_finetune_%j.log
+#SBATCH --time=0:30:00
+#SBATCH --output=BigGAN_debug_%j.log
 
 pwd; hostname; date
 
@@ -39,7 +41,7 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_with_vca.py \
 --weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/savedmodels/BigGAN"  \
 --samples_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/samples" \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \
---num_epochs 20 --iters_per_epoch 4000 --num_G_accumulations 8 \
---test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 1 --seed 0
+--num_epochs 3 --iters_per_epoch 10 --num_G_accumulations 8 \
+--test_every 2000 --save_every 2000 --log_every 1 --num_best_copies 5 --num_save_copies 0 --seed 0
 
 date

@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+
 
 import utils
 import train_fns
@@ -7,7 +10,13 @@ from sync_batchnorm import patch_replication_callback
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
 from simple_utils import load_checkpoint
 
+import neptune.new as neptune
+from neptune.new.types import File
+import Constants
+
 def run(config):
+
+    neptune_run = neptune.init(project='bjohnbraddock/BigGAN-VCA', api_token = Constants.NEPTUNE_API_KEY, source_files=['*.py'])
 
     config['resolution'] = utils.imsize_dict[config['dataset']]
     config['n_classes'] = utils.nclass_dict[config['dataset']]
@@ -41,6 +50,7 @@ def run(config):
     D = None
     G_ema, ema = None, None
     
+    print("Loading VCA")
     VCA = Amy_IntermediateRoad( lowfea_VGGlayer=10, highfea_VGGlayer=36, is_highroad_only=False, is_gist=False)
     VCA = load_checkpoint(VCA, config['vca_filepath'])
     VCA = VCA.to(device)
@@ -74,6 +84,8 @@ def run(config):
                             config['load_weights_root'], experiment_name,
                             config['load_weights'] if config['load_weights'] else None,
                             G_ema if config['ema'] else None)
+
+    state_dict['config'] = config
     
 
     
@@ -94,6 +106,12 @@ def run(config):
     #                             logstyle=config['logstyle'])
     # # Write metadata
     # utils.write_metadata(config['logs_root'], experiment_name, config, state_dict)
+
+    neptune_run['config/model'] = type(model).__name__
+    neptune_run['config/criterion'] = type(VCA).__name__
+    neptune_run['config/criterion'] = type(G.optim).__name__
+    neptune_run['config/params'] = config
+
     
 
 
@@ -119,21 +137,47 @@ def run(config):
             G.train()
             metrics = train()
 
+            neptune_run["training/batch/loss"].log(metrics['G_loss'])
+            neptune_run["training/batch/acc"].log(metrics['VCA_G_z'])
             if not(state_dict['itr'] % config['log_every']):
-                print('Epoch: {}    Itr: {}    G_loss: {}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
+                print('Epoch: {}    Itr: {}    G_loss: {:.4e}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
 
         
         if config['G_eval_mode']:
             G.eval()
         print("Saving")
-        print('Epoch: {}    Itr: {}    G_loss: {:e.4}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
+        print('Epoch: {}    Itr: {}    G_loss: {:.4e}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
         train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, 
                             state_dict, config, experiment_name)
+        
+        with torch.no_grad():
+            if config['parallel']:
+                fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+            else:
+                fixed_Gz = G(fixed_z, G.shared(fixed_y))
+
+            fixed_Gz = F.interpolate(fixed_Gz, size=224)
+
+            VCA_G_z = VCA(fixed_Gz).view(-1)
+            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz), description=str(VCA_G_z))
+
+        
             
         
         state_dict['epoch'] += 1
 
     train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, state_dict, config, experiment_name)
+    with torch.no_grad():
+            if config['parallel']:
+                fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+            else:
+                fixed_Gz = G(fixed_z, G.shared(fixed_y))
+
+            fixed_Gz = F.interpolate(fixed_Gz, size=224)
+
+            VCA_G_z = VCA(fixed_Gz).view(-1)
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz)
+            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz_grid), description=str(VCA_G_z))
             
 
 def main():
