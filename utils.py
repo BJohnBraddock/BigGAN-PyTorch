@@ -336,6 +336,9 @@ def prepare_parser():
   parser.add_argument(
     '--which_train_fn', type=str, default='GAN',
     help='How2trainyourbois (default: %(default)s)')  
+  parser.add_argument(
+    '--train_unpleasant', action='store_true', default=False,
+    help='Set to optimize VCA response of 0 (unpleasant) (default: %(default)s)')
   
   ### Resume training stuff
   parser.add_argument(

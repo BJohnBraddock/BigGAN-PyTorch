@@ -24,15 +24,26 @@ def loss_hinge_dis(dis_fake, dis_real):
   # return loss
 
 
+# Generator : Maximize dis_fake = 1
 def loss_hinge_gen(dis_fake):
   loss = -torch.mean(dis_fake)
   return loss
 
-def loss_vca_gen(vca_fake, target):
-  loss = torch.mean(target - vca_fake)
+
+
+# Pleasant : Maximize vca_fake = 1
+# # Loss is lowest when -1 * 1 = -1, highest when -1 * 0
+def loss_vca_gen(vca_fake):
+  loss = -torch.mean(vca_fake)
+  return loss
+
+# Unpleasant: Maximize vca_fake = 0
+def loss_vca_gen_unpleasant(vca_fake):
+  loss = torch.mean(vca_fake)
   return loss
 
 # Default to hinge loss
 generator_loss = loss_hinge_gen
 discriminator_loss = loss_hinge_dis
-generator_vca_loss = loss_vca_gen
+generator_vca_loss_pleasant = loss_vca_gen
+generator_vca_loss_unpleasant = loss_vca_gen_unpleasant

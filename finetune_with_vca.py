@@ -109,11 +109,11 @@ def run(config):
 
     neptune_run['config/model'] = type(model).__name__
     neptune_run['config/criterion'] = type(VCA).__name__
-    neptune_run['config/criterion'] = type(G.optim).__name__
+    neptune_run['config/optimizer'] = type(G.optim).__name__
     neptune_run['config/params'] = config
 
     
-
+    
 
     G_batch_size = max(config['G_batch_size'], config['batch_size'])
     z_, y_ = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'], device=device, fp16=config['G_fp16'], truncated_z=config['truncated_z'])
@@ -139,7 +139,6 @@ def run(config):
             VCA_G_z = VCA(fixed_Gz).view(-1)
             fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
-            print(fixed_Gz_grid.size())
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
 
@@ -177,7 +176,6 @@ def run(config):
             VCA_G_z = VCA(fixed_Gz).view(-1)
             fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
-            print(fixed_Gz_grid.size())
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
 

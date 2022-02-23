@@ -4,3 +4,7 @@ Constants.py
 samples
 savedmodels
 pretrained
+.neptune
+__pycache__
+models
+logs

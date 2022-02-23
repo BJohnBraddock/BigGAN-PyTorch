@@ -11,7 +11,7 @@
 
 
 #SBATCH --time=10:00:00
-#SBATCH --output=BigGAN_finetune_%j.log
+#SBATCH --output=logs/SLURM/BigGAN_finetune_%j.log
 
 pwd; hostname; date
 
@@ -41,6 +41,6 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_with_vca.py \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \
 --num_epochs 25 --iters_per_epoch 200 --num_G_accumulations 8 \
 --test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 0 --seed 0 \
---truncated_z
+--truncated_z --train_unpleasant
 
 date
