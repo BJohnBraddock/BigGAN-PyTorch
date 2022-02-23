@@ -125,6 +125,9 @@ def prepare_parser():
     '--norm_style', type=str, default='bn',
     help='Normalizer style for G, one of bn [batchnorm], in [instancenorm], '
          'ln [layernorm], gn [groupnorm] (default: %(default)s)')
+  parser.add_argument(
+    '--truncated_z', action='store_true', default=False,
+    help='Use truncated normal distr. for z_? (from NatComm paper) (default: %(default)s)')
          
   ### Model init stuff ###
   parser.add_argument(
@@ -1084,12 +1087,17 @@ class Distribution(torch.Tensor):
       self.mean, self.var = kwargs['mean'], kwargs['var']
     elif self.dist_type == 'categorical':
       self.num_categories = kwargs['num_categories']
+    elif self.dist_type == 'truncated_normal':
+      self.mean, self.var = kwargs['mean'], kwargs['var']
+      self.cutoff_min, self.cutoff_max = kwargs['a'] if kwargs['a'] else -2, kwargs['b'] if kwargs['b'] else 2
 
   def sample_(self):
     if self.dist_type == 'normal':
       self.normal_(self.mean, self.var)
     elif self.dist_type == 'categorical':
-      self.random_(0, self.num_categories)    
+      self.random_(0, self.num_categories)
+    elif self.dist_type == 'truncated_normal':
+      nn.init.trunc_normal_(self, self.mean, self.var, self.cutoff_min, self.cutoff_max)
     # return self.variable
     
   # Silly hack: overwrite the to() method to wrap the new object
@@ -1103,16 +1111,22 @@ class Distribution(torch.Tensor):
 
 # Convenience function to prepare a z and y vector
 def prepare_z_y(G_batch_size, dim_z, nclasses, device='cuda', 
-                fp16=False,z_var=1.0):
+                fp16=False,z_var=1.0, truncated_z=False, truncated_y=False ):
   z_ = Distribution(torch.randn(G_batch_size, dim_z, requires_grad=False))
-  z_.init_distribution('normal', mean=0, var=z_var)
+  if truncated_z:
+    z_.init_distribution('truncated_normal', mean=0, var=z_var, a=-2, b=2)
+  else:
+    z_.init_distribution('normal', mean=0, var=z_var)
   z_ = z_.to(device,torch.float16 if fp16 else torch.float32)   
   
   if fp16:
     z_ = z_.half()
 
   y_ = Distribution(torch.zeros(G_batch_size, requires_grad=False))
-  y_.init_distribution('categorical',num_categories=nclasses)
+  if truncated_y:
+    y_.init_distribution('truncated_normal', mean=0.5, var=0.25, a=0, b=1)
+  else:
+    y_.init_distribution('categorical',num_categories=nclasses)
   y_ = y_.to(device, torch.int64)
   return z_, y_
 

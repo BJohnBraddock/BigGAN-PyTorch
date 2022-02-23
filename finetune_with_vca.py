@@ -83,7 +83,7 @@ def run(config):
         utils.load_weights(G, D, state_dict,
                             config['load_weights_root'], experiment_name,
                             config['load_weights'] if config['load_weights'] else None,
-                            G_ema if config['ema'] else None)
+                            G_ema if config['ema'] else None, load_optim=False)
 
     state_dict['config'] = config
     
@@ -116,9 +116,9 @@ def run(config):
 
 
     G_batch_size = max(config['G_batch_size'], config['batch_size'])
-    z_, y_ = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'], device=device, fp16=config['G_fp16'])
+    z_, y_ = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'], device=device, fp16=config['G_fp16'], truncated_z=config['truncated_z'])
 
-    fixed_z, fixed_y = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'], device=device, fp16=config['G_fp16'])
+    fixed_z, fixed_y = utils.prepare_z_y(G_batch_size, G.dim_z, config['n_classes'], device=device, fp16=config['G_fp16'], truncated_z=config['truncated_z'])
     fixed_z.sample_()
     fixed_y.sample_()
 
@@ -126,6 +126,22 @@ def run(config):
     train = train_fns.VCA_generator_training_function(G, VCA, z_, y_, config)
 
     print(state_dict)
+
+
+    with torch.no_grad():
+            if config['parallel']:
+                fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+            else:
+                fixed_Gz = G(fixed_z, G.shared(fixed_y))
+
+            fixed_Gz = F.interpolate(fixed_Gz, size=224)
+
+            VCA_G_z = VCA(fixed_Gz).view(-1)
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
+            print(fixed_Gz_grid.size())
+            neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['train/vca_tensor'].log(VCA_G_z)
 
     # TODO: Training loop
     for epoch in range(state_dict['epoch'], config['num_epochs']):
@@ -159,7 +175,11 @@ def run(config):
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
             VCA_G_z = VCA(fixed_Gz).view(-1)
-            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz), description=str(VCA_G_z))
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
+            print(fixed_Gz_grid.size())
+            neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['train/vca_tensor'].log(VCA_G_z)
 
         
             
@@ -176,8 +196,11 @@ def run(config):
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
             VCA_G_z = VCA(fixed_Gz).view(-1)
-            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz)
-            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz_grid), description=str(VCA_G_z))
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
+            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['train/vca_tensor'].log(VCA_G_z)
+
             
 
 def main():
