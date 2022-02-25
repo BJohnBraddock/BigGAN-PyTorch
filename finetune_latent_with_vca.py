@@ -88,7 +88,7 @@ def run(config):
     state_dict['config'] = config
     
 
-    neptune_run['config/model'] = type(model).__name__
+    neptune_run['config/model'] = config['model']
     neptune_run['config/criterion'] = type(VCA).__name__
     neptune_run['config/optimizer'] = type(G.optim).__name__
     neptune_run['config/params'] = config
@@ -119,18 +119,24 @@ def run(config):
 
 
     with torch.no_grad():
+
+            G.eval()
             
             fixed_Gz = torch.tensor(G(z_, G.shared(y_)))
+
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
-            print(fixed_Gz.size())
-            print(type(fixed_Gz))
+
             VCA_G_z = VCA(fixed_Gz).view(-1)
-            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
-            print(type(fixed_Gz_grid))
             neptune_run['train/latent_vector'].log(z_)
-            neptune_run['train/G_z'].log(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
+            neptune_run['initial/latent_vector']= z_
+            neptune_run['initial/G_z'].log(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['initial/vca_tensor'] = (VCA_G_z)
+            neptune_run['initial/y_'] = y_.cpu()
+    
 
     # TODO: Training loop
     for epoch in range(state_dict['epoch'], config['num_epochs']):
@@ -161,7 +167,7 @@ def run(config):
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
             VCA_G_z = VCA(fixed_Gz).view(-1)
-            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
             neptune_run['train/latent_vector'].log(z_)
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
@@ -182,11 +188,11 @@ def run(config):
 
             VCA_G_z = VCA(fixed_Gz).view(-1)
 
-            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), nrow=4, normalize=True)
+            fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
-            neptune_run['train/latent_vector'].log(z_)
-            neptune_run['torch_tensor'].upload(File.as_image(fixed_Gz_grid.cpu()))
-            neptune_run['train/vca_tensor'].log(VCA_G_z)
+            neptune_run['final/latent_vector'] = z_
+            neptune_run['final/torch_tensor'].upload(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['final/vca_tensor'] = VCA_G_z
 
             
 
