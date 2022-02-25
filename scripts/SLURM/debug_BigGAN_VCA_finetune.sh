@@ -37,7 +37,7 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_with_vca.py \
 --G_eval_mode \
 --G_ch 96 --D_ch 96 \
 --use_multiepoch_sampler \
---resume --load_weights_root "models/BigGAN/138k" \
+--resume --load_weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/138k" \
 --weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/savedmodels/BigGAN"  \
 --samples_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/samples" \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \

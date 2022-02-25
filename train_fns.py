@@ -17,6 +17,34 @@ def dummy_training_function():
     return {}
   return train
 
+def VCA_latent_training_function(G, VCA, z_, y_, z_y_optim, config):
+  
+  def train():
+    z_y_optim.zero_grad()
+
+    G_z = G(z_, G.shared(y_))
+
+    G_z = F.interpolate(G_z, size=224)
+    
+    VCA_G_z = VCA(G_z).view(-1)
+
+    if config['train_unpleasant']:
+      G_loss = losses.generator_vca_loss_unpleasant(VCA_G_z)
+    else:
+      G_loss = losses.generator_vca_loss_pleasant(VCA_G_z)
+    
+    G_loss.backward()
+    z_y_optim.step()
+
+    out = {
+      'G_loss': float(G_loss.item()),
+      'VCA_G_z': torch.mean(VCA_G_z).item()
+    }
+
+    return out
+  
+  return train
+
 
 def VCA_generator_training_function(G, VCA, z_, y_, config):
 
