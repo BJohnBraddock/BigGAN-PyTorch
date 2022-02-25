@@ -10,7 +10,7 @@
 #SBATCH --mem=5gb
 
 
-#SBATCH --time=2:00:00
+#SBATCH --time=1:00:00
 #SBATCH --output=logs/SLURM/BigGAN_finetune_%j.log
 
 pwd; hostname; date
@@ -35,12 +35,12 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_latent_with_vca.py \
 --G_eval_mode \
 --G_ch 96 --D_ch 96 \
 --use_multiepoch_sampler \
---resume --load_weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/138k" \
+--resume --load_weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/biggan-256" \
 --weights_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/savedmodels/BigGAN"  \
 --samples_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/samples" \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \
 --num_epochs 30 --iters_per_epoch 1000 --num_G_accumulations 8 \
---test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 0 --seed 3 \
+--test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 0 --seed 11 \
 --truncated_z 
 
 date

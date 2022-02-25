@@ -22,7 +22,7 @@ def VCA_latent_training_function(G, VCA, z_, y_, z_y_optim, config):
   def train():
     z_y_optim.zero_grad()
 
-    G_z = G(z_, G.shared(y_))
+    G_z = G(z_, y_)
 
     G_z = F.interpolate(G_z, size=224)
     

@@ -9,6 +9,7 @@ import train_fns
 from sync_batchnorm import patch_replication_callback
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
 from simple_utils import load_checkpoint
+from converter import get_config
 
 import neptune.new as neptune
 from neptune.new.types import File
@@ -46,7 +47,8 @@ def run(config):
     print('Experiment name is {}'.format(experiment_name))
 
     # Build the model
-    G = model.Generator(**config).to(device)
+    p_config = get_config(256)
+    G = model.Generator(**p_config).to(device)
     D = None
     G_ema, ema = None, None
     
@@ -80,17 +82,19 @@ def run(config):
 
     if config['resume']:
         print('Loading weights')
-        utils.load_weights(G, D, state_dict,
-                            config['load_weights_root'], experiment_name,
-                            config['load_weights'] if config['load_weights'] else None,
-                            G_ema if config['ema'] else None, load_optim=False)
+        # utils.load_weights(G, D, state_dict,
+        #                     config['load_weights_root'], experiment_name,
+        #                     config['load_weights'] if config['load_weights'] else None,
+        #                     G_ema if config['ema'] else None, load_optim=False)
+        G_state_dict = torch.load(config['load_weights_root']+"/G.pth")
+        G.load_state_dict(G_state_dict, strict=False)
 
     state_dict['config'] = config
     
 
     neptune_run['config/model'] = config['model']
     neptune_run['config/criterion'] = type(VCA).__name__
-    neptune_run['config/optimizer'] = type(G.optim).__name__
+    neptune_run['config/optimizer'] = 'Adam'
     neptune_run['config/params'] = config
 
     
@@ -104,13 +108,15 @@ def run(config):
     
     # The class category variable was initialized as αS(n) where α = 0.05, S is the softmax function, 
     # and n is a vector of scalars randomly sampled from the truncated normal distribution between [0, 1]
-    # y_ = nn.init.trunc_normal_(torch.randn(1),mean=0.5,a=0, b=1,)
-    # y_ = y_.to(device, torch.float32)
-    # print(y_)
+   
+
     y_ = torch.zeros(G_batch_size).random_(0, config['n_classes']).to(device, torch.int64)
+    # y_ = torch.tensor([850]).to(device, torch.int64)
+    neptune_run['initial/y_'] = y_
+    y_ = torch.tensor(G.shared(y_), device=device, requires_grad=True)
 
-
-    z_y_optim = torch.optim.Adam([z_], lr=config['G_lr'])
+    
+    z_y_optim = torch.optim.Adam([z_, y_], lr=config['G_lr'])
 
 
     train = train_fns.VCA_latent_training_function(G, VCA, z_, y_, z_y_optim, config)
@@ -122,7 +128,7 @@ def run(config):
 
             G.eval()
             
-            fixed_Gz = torch.tensor(G(z_, G.shared(y_)))
+            fixed_Gz = torch.tensor(G(z_, y_))
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
@@ -133,9 +139,9 @@ def run(config):
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
             neptune_run['initial/latent_vector']= z_
-            neptune_run['initial/G_z'].log(File.as_image(fixed_Gz_grid.cpu()))
+            neptune_run['initial/G_z'].upload(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['initial/vca_tensor'] = (VCA_G_z)
-            neptune_run['initial/y_'] = y_.cpu()
+            # neptune_run['initial/y_'] = y_
     
 
     # TODO: Training loop
@@ -162,7 +168,7 @@ def run(config):
         
         with torch.no_grad():
             
-            fixed_Gz = torch.tensor(G(z_, G.shared(y_)))
+            fixed_Gz = torch.tensor(G(z_, y_))
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
@@ -172,6 +178,7 @@ def run(config):
             neptune_run['train/latent_vector'].log(z_)
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
+            neptune_run['train/y_'].log(y_.cpu())
 
         
             
@@ -182,7 +189,7 @@ def run(config):
     # train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, state_dict, config, experiment_name)
     with torch.no_grad():
             
-            fixed_Gz = torch.tensor(G(z_, G.shared(y_)))
+            fixed_Gz = torch.tensor(G(z_, y_))
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
