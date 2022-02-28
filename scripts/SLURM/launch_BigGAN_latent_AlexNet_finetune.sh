@@ -21,7 +21,7 @@ conda activate emoteGAN
 
 
 
-python /home/bjohn.braddock/BigGAN-PyTorch/finetune_latent_with_vca.py \
+python /home/bjohn.braddock/BigGAN-PyTorch/finetune_latent_with_alexnet.py \
 --dataset I128_hdf5 --parallel --shuffle  --num_workers 4 --batch_size 1   \
 --num_D_accumulations 8 \
 --num_D_steps 1 --G_lr 1e-3 --D_lr 4e-4 --D_B2 0.999 --G_B2 0.999 \
@@ -40,7 +40,7 @@ python /home/bjohn.braddock/BigGAN-PyTorch/finetune_latent_with_vca.py \
 --samples_root "/blue/ruogu.fang/bjohn.braddock/BigGAN/samples" \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \
 --num_epochs 30 --iters_per_epoch 1000 --num_G_accumulations 8 \
---test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 0 --seed 15 \
---truncated_z 
+--test_every 2000 --save_every 2000 --num_best_copies 5 --num_save_copies 0 --seed 13 \
+--truncated_z --alexnet_class 1
 
 date

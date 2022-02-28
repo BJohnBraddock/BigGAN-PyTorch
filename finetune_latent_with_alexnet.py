@@ -52,10 +52,9 @@ def run(config):
     D = None
     G_ema, ema = None, None
     
-    print("Loading VCA")
-    VCA = Amy_IntermediateRoad( lowfea_VGGlayer=10, highfea_VGGlayer=36, is_highroad_only=False, is_gist=False)
-    VCA = load_checkpoint(VCA, config['vca_filepath'])
-    VCA = VCA.to(device)
+    print("Loading alexnet")
+    alexnet = torch.hub.load('pytorch/vision:v0.10.0', 'alexnet', pretrained=True).to(device)
+    alexnet.eval()
 
     
 
@@ -93,7 +92,7 @@ def run(config):
     
 
     neptune_run['config/model'] = config['model']
-    neptune_run['config/criterion'] = type(VCA).__name__
+    neptune_run['config/criterion'] = type(alexnet).__name__
     neptune_run['config/optimizer'] = 'Adam'
     neptune_run['config/params'] = config
 
@@ -110,19 +109,19 @@ def run(config):
     # and n is a vector of scalars randomly sampled from the truncated normal distribution between [0, 1]
    
 
-    # y_ = torch.zeros(G_batch_size).random_(0, config['n_classes']).to(device, torch.int64)
+    y_ = torch.zeros(G_batch_size).random_(0, config['n_classes']).to(device, torch.int64)
     # # y_ = torch.tensor([850]).to(device, torch.int64)
     # neptune_run['initial/y_'] = y_
-    # y_ = torch.tensor(G.shared(y_), device=device, requires_grad=True)
+    y_ = torch.tensor(G.shared(y_), device=device, requires_grad=True)
     
-    y_ = nn.init.trunc_normal_(torch.randn(G_batch_size, G.shared_dim), mean=0, std=1, a=-2, b=2).to(device, torch.float32).requires_grad_()
+    # y_ = nn.init.trunc_normal_(torch.randn(G_batch_size, G.shared_dim), mean=0, std=1, a=-2, b=2).to(device, torch.float32).requires_grad_()
     print(z_.size())
     print(y_.size())
     
     z_y_optim = torch.optim.Adam([z_, y_], lr=config['G_lr'])
 
 
-    train = train_fns.VCA_latent_training_function(G, VCA, z_, y_, z_y_optim, config)
+    train = train_fns.alexnet_latent_training_function(G, alexnet, z_, y_, z_y_optim, config)
 
     print(state_dict)
 
@@ -135,15 +134,15 @@ def run(config):
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
-            VCA_G_z = VCA(fixed_Gz).view(-1)
+            alexnet_G_z = alexnet(fixed_Gz)
             fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
             neptune_run['train/latent_vector'].log(z_)
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
-            neptune_run['train/vca_tensor'].log(VCA_G_z)
+            neptune_run['train/alexnet_tensor'].log(alexnet_G_z)
             neptune_run['initial/latent_vector']= z_
             neptune_run['initial/G_z'].upload(File.as_image(fixed_Gz_grid.cpu()))
-            neptune_run['initial/vca_tensor'] = (VCA_G_z)
+            neptune_run['initial/alexnet_tensor'] = (alexnet_G_z)
             # neptune_run['initial/y_'] = y_
     
 
@@ -158,15 +157,15 @@ def run(config):
             metrics = train()
 
             neptune_run["training/batch/loss"].log(metrics['G_loss'])
-            neptune_run["training/batch/acc"].log(metrics['VCA_G_z'])
+            neptune_run["training/batch/acc"].log(metrics['alexnet_G_z'])
             if not(state_dict['itr'] % config['log_every']):
-                print('Epoch: {}    Itr: {}    G_loss: {:.4e}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
+                print('Epoch: {}    Itr: {}    G_loss: {:.4e}    alexnet_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['alexnet_G_z']))
 
         
         if config['G_eval_mode']:
             G.eval()
         print("Saving")
-        print('Epoch: {}    Itr: {}    G_loss: {:.4e}    VCA_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['VCA_G_z']))
+        print('Epoch: {}    Itr: {}    G_loss: {:.4e}    alexnet_G_z: {}'.format(state_dict['epoch'], state_dict['itr'], metrics['G_loss'], metrics['alexnet_G_z']))
        
         
         with torch.no_grad():
@@ -175,12 +174,12 @@ def run(config):
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
-            VCA_G_z = VCA(fixed_Gz).view(-1)
+            alexnet_G_z = alexnet(fixed_Gz)
             fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
             neptune_run['train/latent_vector'].log(z_)
             neptune_run['train/torch_tensor'].log(File.as_image(fixed_Gz_grid.cpu()))
-            neptune_run['train/vca_tensor'].log(VCA_G_z)
+            neptune_run['train/alexnet_tensor'].log(alexnet_G_z)
             neptune_run['train/y_'].log(y_.cpu())
 
         
@@ -196,19 +195,23 @@ def run(config):
 
             fixed_Gz = F.interpolate(fixed_Gz, size=224)
 
-            VCA_G_z = VCA(fixed_Gz).view(-1)
+            alexnet_G_z = alexnet(fixed_Gz).view(-1)
 
             fixed_Gz_grid = torchvision.utils.make_grid(fixed_Gz.float(), normalize=True)
             fixed_Gz_grid = torch.permute(fixed_Gz_grid, (1,2,0))
             neptune_run['final/latent_vector'] = z_
             neptune_run['final/torch_tensor'].upload(File.as_image(fixed_Gz_grid.cpu()))
-            neptune_run['final/vca_tensor'] = VCA_G_z
+            neptune_run['final/alexnet_tensor'] = alexnet_G_z
 
             
 
 def main():
 
     parser = utils.prepare_parser()
+    parser.add_argument(
+        '--alexnet_class', type=int, default=0,
+        help='Which ImageNet class to optimize for (default %(default)s)'
+    )
     config = vars(parser.parse_args())
 
     print(config)
