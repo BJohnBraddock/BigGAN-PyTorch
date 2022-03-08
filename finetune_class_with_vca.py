@@ -6,14 +6,11 @@ import torchvision
 import numpy as np
 
 
-import utils
-import train_fns
-from sync_batchnorm import patch_replication_callback
+import my_train_fns
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
 from simple_utils import load_checkpoint
-from TFHub.converter import get_config
 
-from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample, save_as_images)
+from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample)
 
 import neptune.new as neptune
 from neptune.new.types import File
@@ -23,8 +20,8 @@ def run(config):
 
     neptune_run = neptune.init(project='bjohnbraddock/BigGAN-VCA-3', api_token = Constants.NEPTUNE_API_KEY, source_files=['*.py'])
 
+    assert torch.cuda.is_available(), 'Torch could not find CUDA enabled GPU'
     device = 'cuda'
-    print("Using device cuda" if torch.cuda.is_available() else "Cuda device not found...")
 
     # Seed RNG
     seed= config['seed']
@@ -32,8 +29,6 @@ def run(config):
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     
-
-
     # Setup cudnn.benchmark for free speed
     torch.backends.cudnn.benchmark = True
 
@@ -84,7 +79,7 @@ def run(config):
         z_y_optim = torch.optim.Adam([class_vector], lr=config['lr'])
 
 
-    train = train_fns.VCA_latent_training_function_alt(G, VCA, latent_vector, class_vector, z_y_optim, config)
+    train = my_train_fns.VCA_latent_training_function_alt(G, VCA, latent_vector, class_vector, z_y_optim, config)
 
     print(state_dict)
 
@@ -143,10 +138,7 @@ def run(config):
             neptune_run['train/class_max'].log(torch.topk(class_vector,5))
             neptune_run['train/torch_tensor'].log(File.as_image(Gz_grid.cpu()))
             neptune_run['train/vca_tensor'].log(VCA_G_z)
-            
 
-        
-            
         
         state_dict['epoch'] += 1
 
@@ -167,7 +159,6 @@ def run(config):
         neptune_run['final/torch_tensor'].upload(File.as_image(Gz_grid.cpu()))
         neptune_run['final/vca_tensor'] = VCA_G_z
 
-            
 
 def main():
 

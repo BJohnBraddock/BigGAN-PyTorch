@@ -110,14 +110,17 @@ def VCA_generator_training_function(G, VCA, z_, y_, config):
     z_.sample_()
     y_.sample_()
 
-    G_z = G(z_[:config['batch_size']], G.shared(y_[:config['batch_size']]))
+    if config['parallel']:
+      G_z = nn.parallel.data_parallel(G,(z_[:config['batch_size']], G.shared(y_[:config['batch_size']])))
+      G_z = F.interpolate(G_z, size=224)
+      VCA_G_z = nn.parallel.data_parallel(VCA, G_z).view(-1)
 
-    
-    # Resize image
-    G_z = F.interpolate(G_z, size=224)
+    else:
+      G_z = G(z_[:config['batch_size']], G.shared(y_[:config['batch_size']]))
+      G_z = F.interpolate(G_z, size=224)
+      VCA_G_z = nn.parallel.data_parallel(VCA, G_z).view(-1)
 
-    VCA_G_z = VCA(G_z).view(-1)
-    #TODO: Should this loss be reversed?....
+      
 
     if config['train_unpleasant']:
       G_loss = losses.generator_vca_loss_unpleasant(VCA_G_z)

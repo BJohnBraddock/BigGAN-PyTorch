@@ -9,7 +9,7 @@ import train_fns
 from sync_batchnorm import patch_replication_callback
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
 from simple_utils import load_checkpoint
-from TFHub.converter import get_config
+from converter import get_config
 
 import neptune.new as neptune
 from neptune.new.types import File
@@ -111,11 +111,11 @@ def run(config):
    
 
     # y_ = torch.zeros(G_batch_size).random_(0, config['n_classes']).to(device, torch.int64)
-    # # y_ = torch.tensor([850]).to(device, torch.int64)
+    y_ = torch.tensor([850]).to(device, torch.int64)
     # neptune_run['initial/y_'] = y_
-    # y_ = torch.tensor(G.shared(y_), device=device, requires_grad=True)
+    y_ = torch.tensor(G.shared(y_), device=device, requires_grad=True)
     
-    y_ = nn.init.trunc_normal_(torch.randn(G_batch_size, G.shared_dim), mean=0, std=1, a=-2, b=2).to(device, torch.float32).requires_grad_()
+    # y_ = nn.init.trunc_normal_(torch.randn(G_batch_size, G.shared_dim), mean=0, std=1, a=-2, b=2).to(device, torch.float32).requires_grad_()
     print(z_.size())
     print(y_.size())
     
@@ -145,6 +145,11 @@ def run(config):
             neptune_run['initial/G_z'].upload(File.as_image(fixed_Gz_grid.cpu()))
             neptune_run['initial/vca_tensor'] = (VCA_G_z)
             # neptune_run['initial/y_'] = y_
+            image_filename = 'fixed_samples_{}.jpg'.format(1)
+            torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename,
+                                nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
+
+    exit()
     
 
     # TODO: Training loop
@@ -191,6 +196,7 @@ def run(config):
     # TODO: Save
     # train_fns.save_and_sample(G, D, G_ema, z_, y_, fixed_z, fixed_y, state_dict, config, experiment_name)
     with torch.no_grad():
+            G.eval()
             
             fixed_Gz = torch.tensor(G(z_, y_))
 

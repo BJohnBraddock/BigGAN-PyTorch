@@ -13,7 +13,7 @@
 #SBATCH  --qos=ruogu.fang
 
 #SBATCH --time=1:10:00
-#SBATCH --output=BigGAN_VCA_sample_test_%j.log
+#SBATCH --output=convert_from_tfhub_%j.log
 
 pwd; hostname; date
 

@@ -24,10 +24,10 @@ import tensorflow_hub as hub
 import parse
 
 # import reference biggan from this folder
-import TFHub.biggan_v1 as biggan_for_conversion
+import biggan_v1 as biggan_for_conversion
 
 # Import model from main folder
-sys.path.append('..')
+# sys.path.append('..')
 import BigGAN
 
 
