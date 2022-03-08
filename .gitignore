@@ -8,3 +8,5 @@ pretrained
 __pycache__
 models
 logs
+*.pyc
+*.png
