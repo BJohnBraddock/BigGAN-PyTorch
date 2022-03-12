@@ -17,7 +17,7 @@ from torch.nn import Parameter as P
 # Import my stuff
 import inception_utils
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 import utils
 import train_fns
 from sync_batchnorm import patch_replication_callback

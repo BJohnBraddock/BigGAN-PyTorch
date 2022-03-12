@@ -25,7 +25,7 @@ import torchvision
 # Import my stuff
 import inception_utils
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 import utils
 import losses
 import train_fns

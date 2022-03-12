@@ -8,7 +8,7 @@ import numpy as np
 
 import my_train_fns
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 
 from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample)
 

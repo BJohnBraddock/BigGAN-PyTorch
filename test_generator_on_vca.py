@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 
 import utils
 

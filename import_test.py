@@ -5,7 +5,7 @@ import utils
 import train_fns
 from sync_batchnorm import patch_replication_callback
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 
 def run(config):
 

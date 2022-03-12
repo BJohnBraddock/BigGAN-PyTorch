@@ -7,7 +7,7 @@ import torchvision
 import utils
 import train_fns
 from models.Amy_IntermediateRoad import Amy_IntermediateRoad
-from simple_utils import load_checkpoint
+from vca_utils import load_checkpoint
 from converter import get_config
 
 import neptune.new as neptune
