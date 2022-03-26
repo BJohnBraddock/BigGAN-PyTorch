@@ -10,3 +10,4 @@ models
 logs
 *.pyc
 *.png
+*.jpg
