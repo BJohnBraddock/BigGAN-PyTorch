@@ -22,7 +22,7 @@ conda activate emoteGAN
 
 
 python /home/bjohn.braddock/BigGAN-PyTorch/finetune_class_with_vca.py \
---seed 3 --lr 1e-4 --batch_size 1 --truncation 0.5 \
+--seed 123850 --lr 1e-4 --batch_size 1 --truncation 0.5 \
 --num_epochs 30 --iters_per_epoch 1000 \
 --log_every 200 \
 --vca_filepath "/blue/ruogu.fang/bjohn.braddock/BigGAN/pretrained/VCA/best_model_emotion_regression_amygdala_100epoch_model2_0117_12PM_epoch17.pth" \
