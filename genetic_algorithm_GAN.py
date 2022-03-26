@@ -71,28 +71,39 @@ def run(config):
     population = [vec.to(device, dtype=torch.float32) for vec in population]
 
     for generation in range(config['generation_limit']):
-        population = sort_population(population, fitness_func)
+        G.eval()
+        VCA.eval()
+        VCA_population = []
+        for vec in population:
+            G_z  = G(latent_vector,vec, truncation=config['truncation'])
+            G_z = F.interpolate(G_z, size=224)
+            VCA_population.append(VCA(G_z).item())
 
-        if fitness_func(population[0]) >= config['fitness_limit']:
+        sort_idx = np.argsort(VCA_population)
+        best_idx = sort_idx[0]
+
+        # population = sort_population(population, fitness_func)
+
+        if VCA_population[best_idx] >= config['fitness_limit']:
             break
 
         
-        neptune_run['training/vca_mean'].log(np.mean([fitness_func(vec) for vec in population]))
-        neptune_run['training/vca_best'].log(fitness_func(population[0]))
+        neptune_run['training/vca_mean'].log(np.mean(VCA_population))
+        neptune_run['training/vca_best'].log(VCA_population[best_idx])
         if not(generation % config['log_every']):
-            print('Generation: {}    Best VCA_G_z {}'.format(generation, fitness_func(population[0])))
+            print('Generation: {}    Best VCA_G_z {}'.format(generation, VCA_population[best_idx]))
             log_images(population)
 
         
-        next_generation = population[0:2]
+        next_generation = [population[sort_idx[0]], population[sort_idx[1]]]
 
         for j in range(int(len(population)/2) -1):
-            parents = select_parents(population, fitness_func)
+            parents = pyrandom.choices(population, VCA_population, k=2)
 
-            offspring_a, offspring_b = single_point_crossover(parents[0], parents[1])
+            offspring_a, offspring_b = parents[0], parents[1]
 
-            offspring_a = mutate_class_vector(offspring_a, probability=config['mutate_probability'])
-            offspring_b = mutate_class_vector(offspring_b, probability=config['mutate_probability'])
+            offspring_a = mutate_class_vector(offspring_a, num=4, probability=config['mutate_probability'])
+            offspring_b = mutate_class_vector(offspring_b, num=4, probability=config['mutate_probability'])
 
             next_generation += [offspring_a, offspring_b]
         
